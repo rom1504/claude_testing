@@ -2,6 +2,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+console.log('Three.js loaded:', THREE ? 'YES' : 'NO');
+console.log('THREE version:', THREE.REVISION);
+
 // Three.js Scene Setup
 let scene, camera, renderer, controls;
 let penguins = [];
@@ -10,10 +13,13 @@ let ground;
 
 // Initialize the 3D scene
 function init() {
+    console.log('Initializing 3D scene...');
+
     // Create scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb); // Sky blue
     scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+    console.log('Scene created');
 
     // Setup camera
     camera = new THREE.PerspectiveCamera(
@@ -27,6 +33,12 @@ function init() {
 
     // Setup renderer
     const canvas = document.getElementById('bg-canvas');
+    if (!canvas) {
+        console.error('Canvas element not found!');
+        return;
+    }
+    console.log('Canvas element found, creating renderer...');
+
     renderer = new THREE.WebGLRenderer({
         canvas: canvas,
         antialias: true,
@@ -36,6 +48,7 @@ function init() {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    console.log('Renderer created');
 
     // Add lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -81,6 +94,7 @@ function init() {
 
     // Start animation loop
     animate();
+    console.log('3D scene initialized successfully! Penguins should be jumping!');
 }
 
 // Create ground with grass
@@ -374,8 +388,17 @@ function onWindowResize() {
 }
 
 // Initialize when DOM is loaded
+function safeInit() {
+    try {
+        console.log('Starting init...');
+        init();
+    } catch (error) {
+        console.error('Error initializing 3D scene:', error);
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', safeInit);
 } else {
-    init();
+    safeInit();
 }
