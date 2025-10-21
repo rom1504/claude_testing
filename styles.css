@@ -346,6 +346,61 @@ footer p {
     }
 }
 
+/* Debug Console */
+#debug-console {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.95);
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    z-index: 10000;
+    max-height: 300px;
+    border-top: 2px solid #00ff00;
+}
+
+#debug-header {
+    background: rgba(0, 100, 0, 0.9);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: bold;
+    user-select: none;
+}
+
+#debug-content {
+    padding: 12px;
+    overflow-y: auto;
+    max-height: 250px;
+    line-height: 1.4;
+}
+
+#debug-content.collapsed {
+    display: none;
+}
+
+.debug-log {
+    margin: 4px 0;
+    padding: 4px 8px;
+    border-left: 3px solid #00ff00;
+}
+
+.debug-log.error {
+    color: #ff4444;
+    border-left-color: #ff4444;
+}
+
+.debug-log.warn {
+    color: #ffaa00;
+    border-left-color: #ffaa00;
+}
+
+.debug-log.info {
+    color: #00aaff;
+    border-left-color: #00aaff;
+}
+
 /* Smooth Scrolling */
 html {
     scroll-behavior: smooth;
