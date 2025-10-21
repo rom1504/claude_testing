@@ -1,0 +1,84 @@
+name: Fetch Penguin Videos
+
+on:
+  # Run every day at midnight UTC to get fresh videos
+  schedule:
+    - cron: '0 0 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+  # Run on push to main (optional - comment out if you don't want this)
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fetch-penguin-videos.yml'
+
+jobs:
+  fetch-videos:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Needed to commit the video list
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch penguin videos from YouTube
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: |
+          # Array of search queries
+          queries=(
+            "penguins documentary"
+            "emperor penguins"
+            "baby penguins"
+            "penguins swimming"
+            "funny penguins"
+            "penguin colony"
+            "antarctic penguins wildlife"
+            "cute penguins"
+          )
+
+          # Select a random query
+          query="${queries[$RANDOM % ${#queries[@]}]}"
+          echo "Searching for: $query"
+
+          # Make API request to YouTube
+          response=$(curl -s "https://www.googleapis.com/youtube/v3/search?part=snippet&q=$(echo $query | sed 's/ /%20/g')&type=video&videoEmbeddable=true&maxResults=50&order=relevance&key=$YOUTUBE_API_KEY")
+
+          # Extract video IDs and create JSON
+          echo "$response" | jq '[.items[].id.videoId] | unique' > penguin-videos.json
+
+          # Show what we got
+          video_count=$(jq 'length' penguin-videos.json)
+          echo "Found $video_count videos"
+
+          # Add metadata
+          cat > penguin-videos.json << EOF
+          {
+            "lastUpdated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "query": "$query",
+            "videoIds": $(cat penguin-videos.json)
+          }
+          EOF
+
+          echo "Video list updated!"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet penguin-videos.json; then
+            echo "No changes to penguin videos"
+          else
+            git add penguin-videos.json
+            git commit -m "Update penguin videos - $(date +%Y-%m-%d)"
+            git push
+            echo "Penguin videos updated and committed!"
+          fi
