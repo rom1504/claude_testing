@@ -74,10 +74,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          if git diff --quiet penguin-videos.json; then
+          # Add the file first (works for both new and modified files)
+          git add penguin-videos.json
+
+          # Check if there are staged changes
+          if git diff --cached --quiet; then
             echo "No changes to penguin videos"
           else
-            git add penguin-videos.json
             git commit -m "Update penguin videos - $(date +%Y-%m-%d)"
             git push
             echo "Penguin videos updated and committed!"
