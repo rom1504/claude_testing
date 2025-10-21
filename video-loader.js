@@ -1,50 +1,102 @@
-// Dynamic YouTube Video Loader with Dead Link Detection
-// Automatically replaces dead video links with working penguin videos
+// Dynamic YouTube Video Loader with YouTube Search API
+// Automatically finds and verifies working penguin videos
 
 class PenguinVideoLoader {
     constructor() {
-        // Pool of penguin video IDs to try (curated list of popular penguin videos)
-        this.videoPool = [
-            // BBC Earth and Nature documentaries
-            'Z7PlUGbsXlQ', // Emperor Penguins
-            '3wTWWjYTe1I', // Penguin colony
-            '_1v_EcjeIkg', // Baby penguins
-            'WOP-u3d9VgQ', // Swimming penguins
-            'ddRvMG5yARQ', // Penguin documentary
+        // OPTIONAL: Add your YouTube Data API v3 key here for dynamic video search
+        // Get a FREE key at: https://console.cloud.google.com/apis/credentials
+        // Enable YouTube Data API v3 in your project
+        this.YOUTUBE_API_KEY = ''; // Leave empty to use fallback pool
 
-            // National Geographic
-            '3szxSF_hw7w', // Nat Geo penguins
-            'LS-ErwR2PCg', // Emperor penguin chicks
-
-            // Wildlife and nature channels
-            'Kp5nUQkgWIc', // Penguin feeding
-            'K3TeJEiTbIk', // Adelie penguins
-            '6kQqW38nwkE', // Penguin wildlife
-
-            // Popular penguin videos
-            'oRkRwL0vjOg', // Funny penguins
-            'JCM6NTesP0I', // Penguin behaviors
-            'qZjhIYysBqU', // Antarctic penguins
-            '8tw-LyN5BYI', // Penguin compilation
-            'nFAK8Vj62WM', // March of penguins
-
-            // More alternatives
-            'yU3-vZH_yYQ', // Baby penguins swim
-            '4vNuOzY2_YM', // Colony life
-            'tI0a5egh1Ck', // Underwater footage
-            's4LaVjJad7Q', // Funny moments
-            'DZW-_BNyj2g', // Penguin chicks
-
-            // Additional backups
-            'HU9bK2zIGIw', // Emperor penguins BBC
-            'xRwiY7J7zn8', // Penguin behavior
-            'H3DfT0QLg7k', // Wildlife penguins
-            '2sD_vPGF-gQ', // Penguin swimming
-            'mYTpXjKrswA'  // Penguin documentary
+        // Fallback pool of penguin video IDs (used if no API key or search fails)
+        this.fallbackPool = [
+            'Z7PlUGbsXlQ', '3wTWWjYTe1I', '_1v_EcjeIkg', 'WOP-u3d9VgQ',
+            'ddRvMG5yARQ', '3szxSF_hw7w', 'LS-ErwR2PCg', 'Kp5nUQkgWIc',
+            'K3TeJEiTbIk', '6kQqW38nwkE', 'oRkRwL0vjOg', 'JCM6NTesP0I',
+            'qZjhIYysBqU', '8tw-LyN5BYI', 'nFAK8Vj62WM', 'yU3-vZH_yYQ',
+            '4vNuOzY2_YM', 'tI0a5egh1Ck', 's4LaVjJad7Q', 'DZW-_BNyj2g',
+            'HU9bK2zIGIw', 'xRwiY7J7zn8', 'H3DfT0QLg7k', '2sD_vPGF-gQ'
         ];
 
+        this.videoPool = [];
         this.usedVideos = new Set();
         this.videoElements = [];
+        this.searchQueries = [
+            'penguins documentary',
+            'emperor penguins',
+            'baby penguins',
+            'penguins swimming',
+            'funny penguins',
+            'penguin colony',
+            'antarctic penguins wildlife',
+            'cute penguins'
+        ];
+    }
+
+    // Search YouTube for penguin videos using YouTube Data API v3
+    async searchPenguinVideos(maxResults = 25) {
+        if (!this.YOUTUBE_API_KEY) {
+            console.log('No YouTube API key configured, using fallback pool');
+            return this.fallbackPool.slice();
+        }
+
+        console.log('🔍 Searching YouTube for penguin videos...');
+        const allVideoIds = [];
+
+        try {
+            // Use multiple search queries to get variety
+            const randomQuery = this.searchQueries[Math.floor(Math.random() * this.searchQueries.length)];
+
+            const params = new URLSearchParams({
+                part: 'snippet',
+                q: randomQuery,
+                type: 'video',
+                videoEmbeddable: 'true',
+                videoDuration: 'any',
+                maxResults: Math.min(maxResults, 50), // API limit is 50
+                order: 'relevance',
+                key: this.YOUTUBE_API_KEY
+            });
+
+            const response = await fetch(
+                `https://www.googleapis.com/youtube/v3/search?${params}`,
+                { method: 'GET' }
+            );
+
+            if (!response.ok) {
+                throw new Error(`YouTube API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.items && data.items.length > 0) {
+                const videoIds = data.items
+                    .map(item => item.id.videoId)
+                    .filter(id => id); // Remove any undefined
+
+                allVideoIds.push(...videoIds);
+                console.log(`✓ Found ${videoIds.length} videos for "${randomQuery}"`);
+            }
+
+        } catch (error) {
+            console.error('YouTube search failed:', error.message);
+            console.log('Falling back to hardcoded pool');
+            return this.fallbackPool.slice();
+        }
+
+        // If we got videos, return them; otherwise use fallback
+        if (allVideoIds.length > 0) {
+            // Shuffle for variety
+            return allVideoIds.sort(() => Math.random() - 0.5);
+        } else {
+            return this.fallbackPool.slice();
+        }
+    }
+
+    // Initialize video pool (from search or fallback)
+    async initializePool() {
+        this.videoPool = await this.searchPenguinVideos();
+        console.log(`📦 Video pool initialized with ${this.videoPool.length} videos`);
     }
 
     // Check if a video is embeddable using YouTube oEmbed API
@@ -114,12 +166,6 @@ class PenguinVideoLoader {
         iframe.referrerPolicy = 'strict-origin-when-cross-origin';
         iframe.allowFullscreen = true;
 
-        // Add error detection
-        iframe.addEventListener('error', () => {
-            console.error(`Failed to load video: ${videoId}`);
-            this.replaceFailedVideo(iframe);
-        });
-
         return iframe;
     }
 
@@ -133,7 +179,6 @@ class PenguinVideoLoader {
             const newIframe = this.createVideoIframe(videoId, title);
             container.replaceChild(newIframe, iframeElement);
 
-            // Update title
             const titleElement = container.querySelector('h3');
             if (titleElement && title) {
                 titleElement.textContent = title;
@@ -145,12 +190,14 @@ class PenguinVideoLoader {
     async initializeVideos() {
         console.log('🐧 Initializing penguin video loader...');
 
+        // First, initialize the video pool
+        await this.initializePool();
+
         const videoCards = document.querySelectorAll('.video-card');
         const loadingPromises = [];
 
         for (const card of videoCards) {
             const promise = (async () => {
-                // Find loading placeholder or existing iframe
                 const loadingDiv = card.querySelector('.video-loading');
                 const existingIframe = card.querySelector('iframe');
 
@@ -184,24 +231,6 @@ class PenguinVideoLoader {
         await Promise.all(loadingPromises);
         console.log(`✓ Loaded ${this.videoElements.length} penguin videos successfully!`);
     }
-
-    // Advanced fallback: Listen for YouTube API errors
-    setupAdvancedErrorHandling() {
-        // Monitor for blocked embeds (YouTube restricts some videos)
-        window.addEventListener('message', (event) => {
-            if (event.origin === 'https://www.youtube.com' || event.origin === 'https://www.youtube-nocookie.com') {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.event === 'infoDelivery' && data.info && data.info.playerState === -1) {
-                        // Video failed to load
-                        console.log('Detected video load failure via postMessage');
-                    }
-                } catch (e) {
-                    // Not JSON, ignore
-                }
-            }
-        });
-    }
 }
 
 // Initialize when DOM is ready
@@ -210,12 +239,11 @@ const videoLoader = new PenguinVideoLoader();
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         videoLoader.initializeVideos();
-        videoLoader.setupAdvancedErrorHandling();
     });
 } else {
     videoLoader.initializeVideos();
-    videoLoader.setupAdvancedErrorHandling();
 }
 
 // Export for manual control if needed
 window.penguinVideoLoader = videoLoader;
+
