@@ -51,21 +51,26 @@ jobs:
           # Make API request to YouTube
           response=$(curl -s "https://www.googleapis.com/youtube/v3/search?part=snippet&q=$(echo $query | sed 's/ /%20/g')&type=video&videoEmbeddable=true&maxResults=50&order=relevance&key=$YOUTUBE_API_KEY")
 
-          # Extract video IDs and create JSON
-          echo "$response" | jq '[.items[].id.videoId] | unique' > penguin-videos.json
+          # Extract video IDs to temp file
+          echo "$response" | jq '[.items[].id.videoId] | unique' > video-ids-temp.json
 
           # Show what we got
-          video_count=$(jq 'length' penguin-videos.json)
+          video_count=$(jq 'length' video-ids-temp.json)
           echo "Found $video_count videos"
 
-          # Add metadata
-          cat > penguin-videos.json << EOF
-          {
-            "lastUpdated": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "query": "$query",
-            "videoIds": $(cat penguin-videos.json)
-          }
-          EOF
+          # Debug: show first few IDs
+          echo "Sample video IDs:"
+          jq '.[0:3]' video-ids-temp.json
+
+          # Create final JSON with metadata using jq (more reliable than heredoc)
+          jq -n \
+            --arg updated "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            --arg query "$query" \
+            --slurpfile ids video-ids-temp.json \
+            '{lastUpdated: $updated, query: $query, videoIds: $ids[0]}' > penguin-videos.json
+
+          # Clean up temp file
+          rm video-ids-temp.json
 
           echo "Video list updated!"
 
