@@ -2,9 +2,6 @@ name: Fetch Penguin Videos
 
 on:
   # Run every day at midnight UTC to get fresh videos
-  schedule:
-    - cron: '0 0 * * *'
-
   # Allow manual trigger
   workflow_dispatch:
 
